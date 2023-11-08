@@ -1,4 +1,6 @@
 [workspace]
 members = [
-    "minigrep"
+    "minigrep",
+    "pointers_and_concurrency"
 ]
+resolver = "2"
