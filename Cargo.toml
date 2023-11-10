@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "minigrep",
-    "pointers_and_concurrency"
+    "pointers_and_concurrency",
+    "multithreaded_server"
 ]
 resolver = "2"
