@@ -2,6 +2,7 @@
 members = [
     "minigrep",
     "pointers_and_concurrency",
-    "multithreaded_server"
+    "multithreaded_server",
+    "redis-cache",
 ]
 resolver = "2"
