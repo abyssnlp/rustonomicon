@@ -902,7 +902,26 @@ async fn main() -> Result<()> {
     };
     let mut h: DefaultHasher = DefaultHasher::new();
     request.hash(&mut h);
-    println!("{:x}", h.finish());
+    let request1_hash = format!("{:x}", h.finish());
+    println!("Request 1 Hash: {request1_hash}");
+
+    let request2 = Request {
+        id: Some(serde_json::from_str("1234567").unwrap()),
+        vector: Some(vec![1.345, 12.656, 34.77]),
+        filter: Some(
+            serde_json::from_str::<Value>("{\"name\": \"abcdefgh\"}").unwrap(),
+        ),
+        collection_name: "postings_500K".to_string(),
+        limit: Some(100),
+        offset: Some(100),
+        with_payload: Some(true),
+        with_vectors: Some(true),
+    };
+
+    let mut h2: DefaultHasher = DefaultHasher::new();
+    request2.hash(&mut h2);
+    let request2_hash = format!("{:x}", h2.finish());
+    println!("Request 2 Hash: {request2_hash}");
 
     // Add some stream entries; sleep as we're doing it from the same process
     sleep(Duration::from_millis(100)).await;
