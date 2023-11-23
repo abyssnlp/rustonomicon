@@ -1,13 +1,36 @@
-use std::time::Duration;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{self, Hash, Hasher},
+    time::Duration,
+};
 
 use anyhow::Result;
 use redis::{
     from_redis_value,
     streams::{StreamRangeReply, StreamReadOptions, StreamReadReply},
-    AsyncCommands, Client, ToRedisArgs,
+    AsyncCommands, Client, ToRedisArgs, Value as RedisValue,
 };
+use serde::Serialize;
 use serde_json::Value;
 use tokio::time::sleep;
+
+#[derive(Debug, Serialize)]
+struct Request {
+    pub id: Option<Value>,
+    pub vector: Option<Vec<f64>>,
+    pub filter: Option<Value>,
+    pub collection_name: String,
+    pub limit: Option<u64>,
+    pub offset: Option<u64>,
+    pub with_payload: Option<bool>,
+    pub with_vectors: Option<bool>,
+}
+
+impl std::hash::Hash for Request {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        serde_json::to_string(&self).unwrap().hash(state)
+    }
+}
 
 // with flavor it runs on single thread with async IO
 #[tokio::main(flavor = "current_thread")]
@@ -843,12 +866,43 @@ async fn main() -> Result<()> {
 
     let result2 = con.set_ex(key, value, 3600).await?;
 
-    println!("{:?}", &result2);
+    println!("Set Response: {:?}", &result2);
 
     // get the vector
-    let result3: String = con.get(key.to_string()).await?;
+    // let result3: String = con.get(key.to_string()).await?;
+    let result3: String = con.get_ex(key.to_string(), redis::Expiry::EX(3600)).await?;
 
-    println!("{:?}", serde_json::from_str::<Value>(result3.as_str()));
+    println!("{:?}", serde_json::from_str::<Vec<f64>>(result3.as_str()));
+
+    let result4: RedisValue = con
+        .get_ex("postings".to_string(), redis::Expiry::EX(3600))
+        .await?;
+
+    println!("Not in cache result4: {:?}", result4.to_owned());
+
+    let result5: Option<String> = con
+        .get_ex("postings".to_string(), redis::Expiry::EX(3600))
+        .await?;
+
+    println!("Not in cache result5: {:?}", result5.to_owned());
+
+    // Request caching
+
+    let request = Request {
+        id: Some(serde_json::from_str("1234567").unwrap()),
+        vector: Some(vec![1.345, 12.656, 34.77]),
+        filter: Some(
+            serde_json::from_str::<Value>("{\"name\": \"abcdefgh\"}").unwrap(),
+        ),
+        collection_name: "postings_500K".to_string(),
+        limit: Some(100),
+        offset: None,
+        with_payload: Some(true),
+        with_vectors: Some(true),
+    };
+    let mut h: DefaultHasher = DefaultHasher::new();
+    request.hash(&mut h);
+    println!("{:x}", h.finish());
 
     // Add some stream entries; sleep as we're doing it from the same process
     sleep(Duration::from_millis(100)).await;
