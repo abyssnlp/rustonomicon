@@ -4,5 +4,6 @@ members = [
     "pointers_and_concurrency",
     "multithreaded_server",
     "redis-cache",
+    "tokio-tut",
 ]
 resolver = "2"
